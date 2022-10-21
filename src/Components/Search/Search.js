@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { searchCityOptions, weatherDetailsOptions, forcastOptions } from '../Options/Options';
+import { searchCityOptions, forcastOptions } from '../Options/Options';
 import sunrise from '../../images/sunrise.png';
 import sunset from '../../images/sunset.png';
 
@@ -7,8 +7,10 @@ const Search = () => {
     const [cityName, setCityName] = useState('');
     const [cities, setCities] = useState([]);
     const [weatherDetails, setWeatherDetails] = useState({})
+    const [forecast, setForecast] = useState([])
 
     const [location, setLocation] = useState({
+        "id": '',
         "name": '',
         "country": '',
         "latitude": '',
@@ -19,36 +21,33 @@ const Search = () => {
         navigator.geolocation.getCurrentPosition((position) => {
             const updatedLocation = {
                 ...location,
+                id: location.id,
                 name: location.name,
                 country: location.country,
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude
             }
             setLocation(updatedLocation)
+            sessionStorage.setItem('lat', position.coords.latitude);
+            sessionStorage.setItem('lon', position.coords.longitude)
         })
+
+
     }, [])
 
     const [showSearchData, setShowSearchData] = useState(true)
 
     const handleInputSearch = (e) => {
         setCityName(e.target.value);
-
-        // const updatedLocation = {
-        //     ...location,
-        //     name: '',
-        //     country: '',
-        //     latitude: '',
-        //     longitude: ''
-        // }
-        // setLocation(updatedLocation);
         setShowSearchData(true);
     };
 
-    const handleSelect = (cityName, countryName, latitude, longitude) => {
+    const handleSelect = (id, cityName, countryName, latitude, longitude) => {
         setCityName(cityName);
 
         const updatedLocation = {
             ...location,
+            id: id,
             name: cityName,
             country: countryName,
             latitude: latitude,
@@ -58,7 +57,6 @@ const Search = () => {
         setShowSearchData(false);
     }
 
-
     useEffect(() => {
         fetch(`https://foreca-weather.p.rapidapi.com/location/search/${cityName}`, searchCityOptions)
             .then(response => response.json())
@@ -66,12 +64,24 @@ const Search = () => {
             .catch(err => console.log(err));
     }, [cityName])
 
+    let lat = location.latitude ? location.latitude : sessionStorage.getItem('lat');
+    let lon = location.longitude ? location.longitude : sessionStorage.getItem('lon');
+
     useEffect(() => {
-        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${location.latitude}&lon=${location.longitude}&appid=b549ccb7ffc448882b36981df9909b1f`)
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=b549ccb7ffc448882b36981df9909b1f`)
             .then(response => response.json())
             .then(response => setWeatherDetails(response))
             .catch(err => console.log(err));
+
     }, [location.latitude])
+
+    useEffect(() => {
+        fetch(`https://foreca-weather.p.rapidapi.com/forecast/daily/${location.id}`, forcastOptions)
+        .then(response => response.json())
+        .then(response => setForecast(response.forecast))
+        .catch(err => console.error(err));
+    }, [location.id])
+
 
     const kelvinToCelcius = (temp) => {
         return Math.round(temp - 273.15) + "° C";
@@ -81,19 +91,19 @@ const Search = () => {
         let date = new Date(timestamp * 1000);
         let hours = date.getHours();
         let minutes = "0" + date.getMinutes();
-        let seconds = "0" + date.getSeconds();
 
         let am = "AM";
         let pm = "PM";
 
         if (hours >= 12) {
-            return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + ' ' + pm
+            return hours + ':' + minutes.substr(-2) + ' ' + pm
         } else {
-            return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + ' ' + am
+            return hours + ':' + minutes.substr(-2) + ' ' + am
         }
     }
 
 
+    console.log("weatherDetails", weatherDetails)
 
 
     return (
@@ -109,7 +119,7 @@ const Search = () => {
                         cities.length > 0 && cities.map((location, index) => {
                             if (index < 3) {
                                 return (
-                                    <li className="city_option" key={location.id} onClick={() => handleSelect(location.name, location.country, location.lat, location.lon)}>{location.name}, {location.country}</li>
+                                    <li className="city_option" key={location.id} onClick={() => handleSelect(location.id, location.name, location.country, location.lat, location.lon)}>{location.name}, {location.country}</li>
                                 )
                             }
                         })
@@ -129,11 +139,11 @@ const Search = () => {
                                 </div>
                                 <p className="weather">{kelvinToCelcius(weatherDetails.main.temp)}</p>
                                 <div className="row">
-                                    <div className="col-md-6 col-6 text-center p-2">
+                                    <div className="col-md-4 col-6 text-center p-2">
                                         <img className="bottom_image mb-2" src={sunrise} alt="Sunrise"></img>
                                         <p>{timestampToLocalTime(weatherDetails.sys.sunrise)}</p>
                                     </div>
-                                    <div className="col-md-6 col-6 text-center p-2">
+                                    <div className="col-md-4 col-6 text-center p-2">
                                         <img className="bottom_image mb-2" src={sunset} alt="Sunset"></img>
                                         <p>{timestampToLocalTime(weatherDetails.sys.sunset)}</p>
                                     </div>
@@ -148,12 +158,16 @@ const Search = () => {
                                 <p>Min: {kelvinToCelcius(weatherDetails.main.temp_min)}</p>
                             </div>
                         </div>
-                        <div className="mt-5 forcast">
-                            <p>Local</p>
-                        </div>
                     </div>
                     <div className="col-md-6">
                         <p>Forcast</p>
+                        {/* {
+                            forecast && forecast.map((day) => {
+                                return(
+                                    <p>SSS</p>
+                                )
+                            })
+                        } */}
                     </div>
                 </div>
             }
