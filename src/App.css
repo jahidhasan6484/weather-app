@@ -24,6 +24,7 @@ input {
   background: #fff !important;
   padding: 50px;
   border-radius: 10px;
+  transition: 0.3s;
 }
 
 .weather_image {
@@ -38,9 +39,9 @@ input {
 }
 
 .weather {
-  font-size: 4rem;
+  font-size: 3rem;
   font-weight: 600;
-  letter-spacing: 5px;
+  letter-spacing: 3px;
 }
 
 .second p {
@@ -52,7 +53,7 @@ input {
   letter-spacing: 2px;
 }
 
-.time {
+.weatherType {
   color: gray;
   letter-spacing: 2px;
   font-size: 0.9rem;
@@ -61,8 +62,16 @@ input {
 .city_option{
   list-style: none;
   cursor: pointer;
-  margin: 10px;
+  margin: 10px 0;
   background: rgb(228, 228, 228);
   padding: 10px;
   border-radius: 7px;
+}
+
+.bottom_image {
+  width: 30%;
+}
+
+.weather_card:hover {
+  transform: scale(1.02);
 }

@@ -1,41 +1,59 @@
 import { useState, useEffect } from "react";
 import { searchCityOptions, weatherDetailsOptions, forcastOptions } from '../Options/Options';
-import image from '../../images/sunny.svg'
+import sunrise from '../../images/sunrise.png';
+import sunset from '../../images/sunset.png';
 
 const Search = () => {
     const [cityName, setCityName] = useState('');
-    const [searchData, setSearchData] = useState([])
-    const [location, setLocation] = useState({
-        "id": '',
-        "name": '',
-        "country": ''
-    });
+    const [cities, setCities] = useState([]);
     const [weatherDetails, setWeatherDetails] = useState({})
+
+    const [location, setLocation] = useState({
+        "name": '',
+        "country": '',
+        "latitude": '',
+        "longitude": ''
+    });
+
+    useEffect(() => {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const updatedLocation = {
+                ...location,
+                name: location.name,
+                country: location.country,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            }
+            setLocation(updatedLocation)
+        })
+    }, [])
 
     const [showSearchData, setShowSearchData] = useState(true)
 
     const handleInputSearch = (e) => {
         setCityName(e.target.value);
-        const updatedLocation = {
-            ...location,
-            id: '',
-            name: '',
-            country: ''
-        }
-        setLocation(updatedLocation);
+
+        // const updatedLocation = {
+        //     ...location,
+        //     name: '',
+        //     country: '',
+        //     latitude: '',
+        //     longitude: ''
+        // }
+        // setLocation(updatedLocation);
         setShowSearchData(true);
     };
 
-    const handleSelect = (id, cityName, countryName) => {
-        setCityName(cityName)
+    const handleSelect = (cityName, countryName, latitude, longitude) => {
+        setCityName(cityName);
 
         const updatedLocation = {
             ...location,
-            id: id,
             name: cityName,
-            country: countryName
+            country: countryName,
+            latitude: latitude,
+            longitude: longitude
         }
-
         setLocation(updatedLocation);
         setShowSearchData(false);
     }
@@ -44,24 +62,39 @@ const Search = () => {
     useEffect(() => {
         fetch(`https://foreca-weather.p.rapidapi.com/location/search/${cityName}`, searchCityOptions)
             .then(response => response.json())
-            .then(response => setSearchData(response.locations))
+            .then(response => setCities(response.locations))
             .catch(err => console.log(err));
     }, [cityName])
 
-
     useEffect(() => {
-        location.id && fetch(`https://foreca-weather.p.rapidapi.com/current/${location.id}?alt=0&tempunit=C&windunit=MS&tz=Europe%2FLondon&lang=en`, weatherDetailsOptions)
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${location.latitude}&lon=${location.longitude}&appid=b549ccb7ffc448882b36981df9909b1f`)
             .then(response => response.json())
-            .then(response => setWeatherDetails(response.current))
+            .then(response => setWeatherDetails(response))
             .catch(err => console.log(err));
-    })
-    
-    // useEffect(() => {
-    //     location.id && fetch(`https://foreca-weather.p.rapidapi.com/forecast/daily/${location.id}?alt=0&tempunit=C&windunit=MS&periods=8&dataset=full`, forcastOptions)
-    //     .then(response => response.json())
-    //     .then(response => console.log(response))
-    //     .catch(err => console.error(err));
-    // })
+    }, [location.latitude])
+
+    const kelvinToCelcius = (temp) => {
+        return Math.round(temp - 273.15) + "° C";
+    }
+
+    const timestampToLocalTime = (timestamp) => {
+        let date = new Date(timestamp * 1000);
+        let hours = date.getHours();
+        let minutes = "0" + date.getMinutes();
+        let seconds = "0" + date.getSeconds();
+
+        let am = "AM";
+        let pm = "PM";
+
+        if (hours >= 12) {
+            return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + ' ' + pm
+        } else {
+            return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + ' ' + am
+        }
+    }
+
+
+
 
     return (
         <>
@@ -73,86 +106,60 @@ const Search = () => {
                 showSearchData == true &&
                 <ul>
                     {
-                        searchData.length > 0 && searchData.map((location) => {
-                            return (
-                                <li className="city_option" key={location.id} onClick={() => handleSelect(location.id, location.name, location.country)}>{location.name}, {location.country}</li>
-                            )
+                        cities.length > 0 && cities.map((location, index) => {
+                            if (index < 3) {
+                                return (
+                                    <li className="city_option" key={location.id} onClick={() => handleSelect(location.name, location.country, location.lat, location.lon)}>{location.name}, {location.country}</li>
+                                )
+                            }
                         })
                     }
                 </ul>
             }
 
             {
-                weatherDetails.temperature &&
-                <div className="row">
-                    <div className="col-md-7">
+                weatherDetails.id &&
+                <div className="mt-5 row">
+                    <div className="col-md-6">
                         <div className="weather_card row">
-                            <div className="col-md-8 first">
+                            <div className="col-md-6 first">
                                 <div>
-                                    <h4 className="location">{location.name}, {location.country}</h4>
-                                    <p className="time">{weatherDetails.time}</p>
+                                    <h4 className="location">{weatherDetails.name}, {location.country ? location.country : weatherDetails.sys.country}</h4>
+                                    <p className="weatherType">{weatherDetails.weather[0].main}</p>
                                 </div>
-                                <p className="weather">{weatherDetails.temperature}°C</p>
+                                <p className="weather">{kelvinToCelcius(weatherDetails.main.temp)}</p>
+                                <div className="row">
+                                    <div className="col-md-6 col-6 text-center p-2">
+                                        <img className="bottom_image mb-2" src={sunrise} alt="Sunrise"></img>
+                                        <p>{timestampToLocalTime(weatherDetails.sys.sunrise)}</p>
+                                    </div>
+                                    <div className="col-md-6 col-6 text-center p-2">
+                                        <img className="bottom_image mb-2" src={sunset} alt="Sunset"></img>
+                                        <p>{timestampToLocalTime(weatherDetails.sys.sunset)}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="col-md-4 second">
-                                <img className="weather_image" src={image} alt={weatherDetails.symbolPhrase}></img>
-                                <p>Feels Like: {weatherDetails.feelsLikeTemp}° C</p>
-                                <p>Dew Point: {weatherDetails.dewPoint}° C</p>
-                                <p>Pressure: {weatherDetails.pressure} kPa</p>
-                                <p>Wind Speed: {weatherDetails.windSpeed} km/h</p>
+                            <div className="col-md-6 second">
+                                <img className="weather_image" src={`icons/${weatherDetails.weather[0].icon}.png`} alt="image"></img>
+                                <p>Feels Like: {kelvinToCelcius(weatherDetails.main.feels_like)}</p>
+                                <p>Humidity: {weatherDetails.main.humidity}%</p>
+                                <p>Pressure: {weatherDetails.main.pressure} hPa</p>
+                                <p>Max: {kelvinToCelcius(weatherDetails.main.temp_max)}</p>
+                                <p>Min: {kelvinToCelcius(weatherDetails.main.temp_min)}</p>
                             </div>
                         </div>
-                        <div className="forcast">
-                            <p>AAA</p>
+                        <div className="mt-5 forcast">
+                            <p>Local</p>
                         </div>
                     </div>
-                    <div className="col-md-5">
-                        <p>AAAAAA</p>
+                    <div className="col-md-6">
+                        <p>Forcast</p>
                     </div>
                 </div>
             }
 
 
-            {/* {
-                !weatherDetails &&
-                <>
-                    {
-                        searchResult && searchResult.locations.map((city) => {
-                            return (
-                                <div key={city.id} onClick={() => handleSelect(city.id, city.name, city.country)}>
-                                    <p>{city.name}, {city.country} - {city.id}</p>
-                                </div>
-                            )
 
-                        })
-                    }
-                </>
-            }
-
-
-            {
-                weatherDetails &&
-                <div className="row mt-5">
-                <div className="col-md-7">
-                    <div className="weather_card row">
-                        <div className="col-6 first">
-                            <h5>AAA  </h5>
-                            <p>June 11, 2022</p>
-                            <p className="weather">{weatherDetails?.temperature}°C</p>
-                        </div>
-                        <div className="col-6 second">
-                            <img className="weather_image" src={image} alt="weather"></img>
-                            <p>feelsLikeTemp: {weatherDetails?.feelsLikeTemp}</p>
-                            <p>temperature: {weatherDetails?.temperature}</p>
-                        </div>
-                    </div>
-                    <div></div>
-                </div>
-                <div className="col-md-5">
-
-                </div>
-            </div>
-            }  */}
 
         </>
     )
